@@ -25,6 +25,41 @@
 
 设置 `S3_FORCE_PATH_STYLE=1` 或 `true` 时，会默认启用 path-style 寻址。
 
+此外，脚本还会自动尝试读取当前 skill 目录下的 `.env`：
+
+- 当前 skill 目录下的 `.env`
+
+该文件中的键值会在“当前进程环境变量尚未设置”时作为默认值加载，因此：
+
+- 已经 `export` 的环境变量优先级更高
+- `.env` 适合保存常用默认配置
+- 命令行参数依然具有最高显式控制力
+
+推荐保存的键：
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN`
+- `AWS_DEFAULT_REGION` 或 `AWS_REGION`
+- `S3_ENDPOINT_URL`
+- `S3_FORCE_PATH_STYLE`
+
+示例：
+
+```dotenv
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+AWS_DEFAULT_REGION=us-east-1
+S3_ENDPOINT_URL=https://minio.example.internal:9000
+S3_FORCE_PATH_STYLE=true
+```
+
+工作流约定：
+
+- 如果用户在一次会话中提供了完整或大部分可复用配置，应询问是否写入该 `.env`
+- 只有在用户明确同意后，才保存到 `.env`
+- 如果用户拒绝，则继续使用本次会话提供的临时配置，不默认落盘
+
 ## 命令参考
 
 ```bash

@@ -32,9 +32,10 @@ description: 当任务需要把一个或多个本地文件上传到 AWS S3 或�
    - region（如果需要）
    - access key 和 secret key
    - 可选的 session token
-3. 尽量通过环境变量提供密钥，不要直接把密钥写进 prompt。
-4. 运行 `scripts/upload_s3.py`。
-5. 返回生成的 `s3://bucket/key`，以及可用时的 HTTPS URL。
+3. 如果用户在本次会话中提供了可复用的 S3 配置（如 endpoint、bucket、region、access key、secret key、session token、path-style 偏好），主动询问是否要持久化到当前 skill 目录下的 `.env`，避免后续类似场景重复询问。
+4. 尽量通过环境变量或 skill 目录下的 `.env` 提供密钥，不要直接把密钥写进 prompt。
+5. 运行 `scripts/upload_s3.py`。
+6. 返回生成的 `s3://bucket/key`，以及可用时的 HTTPS URL。
 
 ## 快速开始
 
@@ -110,7 +111,11 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   - `--session-token`
   - `--region`
 
+脚本启动时会自动读取当前 skill 目录下的 `.env`（如果存在），并仅在对应环境变量尚未设置时作为默认值注入。适合保存常用的 S3/MinIO 配置，减少重复输入。
+
 如无必要，优先使用环境变量，避免密钥进入 shell 历史记录。
+
+当用户在当前会话里首次提供一套可复用配置时，应明确询问是否写入 当前 skill 目录下的 `.env`。只有在用户同意后，才可以落盘保存。
 
 ## 常用命令
 
