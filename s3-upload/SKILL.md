@@ -1,44 +1,44 @@
 ---
 name: s3-upload
-description: Use when a task needs to upload one or more local files to AWS S3 or any S3-compatible object storage, including privately deployed MinIO. Supports custom endpoints, path-style access, metadata, public or private objects, and deterministic uploads through the bundled script.
+description: 当任务需要把一个或多个本地文件上传到 AWS S3 或任意兼容 S3 的对象存储时使用，包括私有部署的 MinIO。支持自定义 endpoint、path-style 访问、metadata、公有或私有对象，以及通过内置脚本进行可重复、确定性的上传。
 ---
 
-# S3 Upload
+# S3 上传
 
-## Overview
+## 概述
 
-Use this skill to upload local files into S3-compatible object storage from the Codex environment.
-It is appropriate for AWS S3, private MinIO deployments, and other S3-compatible services that expose an endpoint, bucket, credentials, and object key.
+在 Codex 环境中把本地文件上传到兼容 S3 的对象存储时，使用这个 Skill。
+适用于 AWS S3、私有 MinIO 部署，以及其他提供 endpoint、bucket、凭证和对象 key 的 S3 兼容服务。
 
-## When to Use
+## 适用场景
 
-Use this skill when the user asks to:
+当用户提出以下需求时使用这个 Skill：
 
-- upload build artifacts, logs, screenshots, exports, or backups to object storage
-- send files to a self-hosted MinIO server
-- place files into a bucket with a specific key or prefix
-- upload files with S3-compatible credentials and a custom endpoint
-- set metadata, content type, or object visibility during upload
+- 将构建产物、日志、截图、导出文件或备份上传到对象存储
+- 将文件发送到自托管 MinIO 服务
+- 把文件上传到指定 bucket，并指定对象 key 或前缀
+- 使用 S3 兼容凭证和自定义 endpoint 上传文件
+- 在上传时设置 metadata、content type 或对象可见性
 
-Do not use this skill for browser-based file uploads to web apps. Use a browser or computer-use workflow for those.
+不要把这个 Skill 用于网页应用里的浏览器文件上传；这类任务应改用浏览器或 computer-use 工作流。
 
-## Workflow
+## 工作流程
 
-1. Confirm the local file path exists.
-2. Gather upload settings:
+1. 确认本地文件路径存在。
+2. 收集上传参数：
    - bucket
-   - key or key prefix
-   - endpoint URL for MinIO or other private S3-compatible service
-   - region if required
-   - access key and secret key
-   - optional session token
-3. Prefer environment variables for secrets instead of placing secrets in the prompt when possible.
-4. Run `scripts/upload_s3.py`.
-5. Report the resulting `s3://bucket/key` plus the HTTPS URL when available.
+   - key 或 key 前缀
+   - MinIO 或其他私有 S3 兼容服务的 endpoint URL
+   - region（如果需要）
+   - access key 和 secret key
+   - 可选的 session token
+3. 尽量通过环境变量提供密钥，不要直接把密钥写进 prompt。
+4. 运行 `scripts/upload_s3.py`。
+5. 返回生成的 `s3://bucket/key`，以及可用时的 HTTPS URL。
 
-## Quick Start
+## 快速开始
 
-### Upload one file to AWS S3
+### 上传单个文件到 AWS S3
 
 ```bash
 export AWS_ACCESS_KEY_ID="AKIA..."
@@ -50,7 +50,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --region us-east-1
 ```
 
-### Upload one file to private MinIO
+### 上传单个文件到私有 MinIO
 
 ```bash
 export AWS_ACCESS_KEY_ID="minioadmin"
@@ -64,7 +64,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --path-style
 ```
 
-### Upload several files under one prefix
+### 将多个文件上传到同一个前缀下
 
 ```bash
 python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
@@ -74,47 +74,47 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --prefix batch/2026-05-21/
 ```
 
-## Script Behavior
+## 脚本能力
 
-The bundled uploader:
+内置上传脚本具有以下特点：
 
-- uses only Python standard library
-- signs requests with AWS Signature Version 4
-- supports AWS S3 and S3-compatible endpoints
-- supports both virtual-hosted and path-style addressing
-- can set content type, cache control, ACL, and custom metadata
-- can run in `--dry-run` mode to validate configuration without uploading
+- 仅使用 Python 标准库
+- 使用 AWS Signature Version 4 进行签名
+- 支持 AWS S3 和兼容 S3 的 endpoint
+- 同时支持 virtual-hosted 和 path-style 两种寻址方式
+- 可设置 content type、cache control、ACL 和自定义 metadata
+- 支持 `--dry-run`，可在不上传的情况下校验配置
 
-## Addressing Rules
+## 寻址规则
 
-- Default behavior:
-  - AWS S3: virtual-hosted style is fine
-  - MinIO/private deployments: prefer `--path-style`
-- If the endpoint uses an internal hostname, non-wildcard TLS, IP address, or custom port, prefer `--path-style`.
-- If the user provides a single object key, use `--key`.
-- If the user wants to upload multiple files into the same folder-like location, use `--prefix`.
+- 默认行为：
+  - AWS S3：可以优先使用 virtual-hosted style
+  - MinIO / 私有部署：优先使用 `--path-style`
+- 如果 endpoint 使用内网主机名、非通配 TLS、IP 地址或自定义端口，优先使用 `--path-style`。
+- 如果用户提供的是单个对象 key，使用 `--key`。
+- 如果用户希望把多个文件上传到同一个“目录式”位置，使用 `--prefix`。
 
-## Credentials
+## 凭证
 
-Supported inputs:
+支持以下输入方式：
 
-- environment variables:
+- 环境变量：
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
   - `AWS_SESSION_TOKEN`
   - `AWS_DEFAULT_REGION`
   - `AWS_REGION`
-- command-line flags:
+- 命令行参数：
   - `--access-key`
   - `--secret-key`
   - `--session-token`
   - `--region`
 
-Prefer env vars when possible so secrets do not get baked into command history.
+如无必要，优先使用环境变量，避免密钥进入 shell 历史记录。
 
-## Common Commands
+## 常用命令
 
-### Upload and set content type
+### 上传并设置 content type
 
 ```bash
 python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
@@ -124,7 +124,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --content-type application/javascript
 ```
 
-### Upload as public-read
+### 以 public-read 上传
 
 ```bash
 python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
@@ -134,7 +134,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --acl public-read
 ```
 
-### Add metadata
+### 添加 metadata
 
 ```bash
 python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
@@ -145,24 +145,24 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --metadata env=prod
 ```
 
-## Troubleshooting
+## 故障排查
 
 - `SignatureDoesNotMatch`
-  - verify endpoint, region, clock, access key, and secret key
-  - for MinIO, try `--path-style`
+  - 检查 endpoint、region、系统时间、access key 和 secret key
+  - 如果是 MinIO，尝试 `--path-style`
 - `AccessDenied`
-  - verify bucket policy, credentials, and requested ACL
-- TLS or hostname mismatch
-  - use the correct endpoint and prefer `--path-style`
-- Wrong object location
-  - check whether `--key` or `--prefix` was used
+  - 检查 bucket policy、凭证权限，以及请求的 ACL 是否被允许
+- TLS 或主机名不匹配
+  - 使用正确的 endpoint，并优先尝试 `--path-style`
+- 对象上传到了错误位置
+  - 检查使用的是 `--key` 还是 `--prefix`
 
-For configuration details and examples, read `references/configuration.md`.
+如需查看更详细的配置说明和示例，读取 `references/configuration.md`。
 
-## Resources
+## 资源
 
 ### scripts/upload_s3.py
-Deterministic uploader for AWS S3 and S3-compatible endpoints including private MinIO.
+适用于 AWS S3 和兼容 S3 endpoint（包括私有 MinIO）的确定性上传脚本。
 
 ### references/
-Use `references/configuration.md` for environment variables, examples, and MinIO-specific notes.
+使用 `references/configuration.md` 查看环境变量、命令示例和 MinIO 专项说明。

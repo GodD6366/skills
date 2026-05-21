@@ -1,19 +1,19 @@
-# S3 Upload Configuration Reference
+# S3 上传配置参考
 
-## Required Inputs
+## 必填输入
 
-At minimum, the uploader needs:
+上传脚本至少需要以下信息：
 
-- a local file path
-- a bucket name
-- either:
-  - `--key` for one uploaded object, or
-  - `--prefix` for one or more uploaded files
-- credentials
+- 本地文件路径
+- bucket 名称
+- 以下二选一：
+  - `--key`：上传为单个对象
+  - `--prefix`：上传一个或多个文件
+- 凭证
 
-## Environment Variables
+## 环境变量
 
-The script reads these when flags are not provided:
+当命令行参数未提供时，脚本会读取以下环境变量：
 
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
@@ -23,9 +23,9 @@ The script reads these when flags are not provided:
 - `S3_ENDPOINT_URL`
 - `S3_FORCE_PATH_STYLE`
 
-`S3_FORCE_PATH_STYLE=1` or `true` enables path-style addressing by default.
+设置 `S3_FORCE_PATH_STYLE=1` 或 `true` 时，会默认启用 path-style 寻址。
 
-## Command Reference
+## 命令参考
 
 ```bash
 python3 scripts/upload_s3.py \
@@ -34,9 +34,9 @@ python3 scripts/upload_s3.py \
   --key some/object/key
 ```
 
-Important flags:
+重要参数：
 
-- `--file PATH` repeatable
+- `--file PATH`，可重复使用
 - `--bucket NAME`
 - `--key KEY`
 - `--prefix PREFIX`
@@ -50,33 +50,33 @@ Important flags:
 - `--content-type MIME`
 - `--cache-control VALUE`
 - `--acl VALUE`
-- `--metadata key=value` repeatable
+- `--metadata key=value`，可重复使用
 - `--dry-run`
 
-## Key vs Prefix
+## key 与 prefix 的区别
 
-- Use `--key` only when uploading exactly one file.
-- Use `--prefix` when uploading many files and preserving each source filename.
+- 只有在上传恰好一个文件时，才使用 `--key`。
+- 当需要上传多个文件，并保留各自原始文件名时，使用 `--prefix`。
 
-Examples:
+示例：
 
 ```bash
-# One file, explicit key
+# 单个文件，显式指定 key
 --file ./report.pdf --key exports/2026/report.pdf
 
-# Many files, auto-append basename
+# 多个文件，自动追加各自 basename
 --file ./a.txt --file ./b.txt --prefix exports/2026-05-21/
 ```
 
-## MinIO Notes
+## MinIO 说明
 
-For private MinIO deployments:
+对于私有 MinIO 部署：
 
-- set `--endpoint`, for example `https://minio.example.internal`
-- usually prefer `--path-style`
-- keep region consistent with the server configuration; `us-east-1` is a common default
+- 设置 `--endpoint`，例如 `https://minio.example.internal`
+- 通常优先使用 `--path-style`
+- region 要与服务端配置保持一致；`us-east-1` 是常见默认值
 
-Example:
+示例：
 
 ```bash
 export AWS_ACCESS_KEY_ID="minioadmin"
@@ -90,35 +90,41 @@ python3 scripts/upload_s3.py \
   --path-style
 ```
 
-## Output
+## 输出
 
-On success the script prints JSON for each uploaded file, including:
+上传成功后，脚本会为每个文件输出一段 JSON，包含：
 
-- local path
+- 本地路径
 - bucket
 - key
 - `s3_uri`
-- HTTP status
-- object URL when derivable
+- HTTP 状态码
+- 如果可推导，则包含对象 URL
 
-## Failure Patterns
+## 常见失败模式
 
-### Signature mismatch
+### 签名不匹配
 
-- wrong secret key
-- wrong region
-- wrong endpoint host
-- wrong path-style setting
+可能原因：
 
-### Access denied
+- secret key 错误
+- region 错误
+- endpoint 主机错误
+- path-style 设置不正确
 
-- missing put-object permission
-- bucket policy denies ACL or metadata
-- bucket does not exist for provided credentials
+### 权限被拒绝
 
-### TLS failure
+可能原因：
 
-- endpoint certificate does not match hostname
-- internal CA is not trusted in the runtime
+- 缺少 put-object 权限
+- bucket policy 禁止设置 ACL 或 metadata
+- 当前凭证下 bucket 不存在
 
-If needed, the script can be adapted later for custom CA handling, multipart uploads, or presigned URLs.
+### TLS 失败
+
+可能原因：
+
+- endpoint 证书与主机名不匹配
+- 运行环境不信任内部 CA
+
+如果后续需要，也可以继续扩展脚本以支持自定义 CA、多段上传或预签名 URL。
