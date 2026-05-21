@@ -1,0 +1,4 @@
+interface:
+  display_name: "S3 Upload"
+  short_description: "Upload files to S3 or MinIO-compatible object storage"
+  default_prompt: "Use $s3-upload to upload local files to AWS S3, MinIO, or another S3-compatible endpoint with the right bucket, key, and endpoint settings."
