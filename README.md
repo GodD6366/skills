@@ -9,14 +9,22 @@ GitHub 仓库地址：`https://github.com/GodD6366/skills`
 ```text
 skills/
 ├── README.md
-└── s3-upload/
+├── s3-upload/
+│   ├── SKILL.md
+│   ├── agents/
+│   │   └── openai.yaml
+│   ├── references/
+│   │   └── configuration.md
+│   └── scripts/
+│       └── upload_s3.py
+└── use-subagent/
     ├── SKILL.md
     ├── agents/
     │   └── openai.yaml
     ├── references/
-    │   └── configuration.md
+    │   └── prompts.md
     └── scripts/
-        └── upload_s3.py
+        └── init_agents.py
 ```
 
 ## 项目目标
@@ -53,6 +61,19 @@ Skill 目录：
 https://github.com/GodD6366/skills/tree/main/s3-upload
 ```
 
+### `use-subagent`
+
+用途：把“先定位、再规划、最后亲自改代码”的主代理调度规则沉淀成可复用 Skill。
+
+可复制提示词：
+
+```text
+请安装并接入这个 GitHub 上的 Skill：`use-subagent`
+
+Skill 目录：
+https://github.com/GodD6366/skills/tree/main/use-subagent
+```
+
 ## 当前 Skill：`s3-upload`
 
 GitHub 目录：`https://github.com/GodD6366/skills/tree/main/s3-upload`
@@ -65,6 +86,26 @@ GitHub 目录：`https://github.com/GodD6366/skills/tree/main/s3-upload`
 - 支持 path-style / virtual-hosted-style
 - 设置 metadata、ACL、content type、cache control
 - 通过 Python 标准库实现确定性上传
+
+## 当前 Skill：`use-subagent`
+
+GitHub 目录：`https://github.com/GodD6366/skills/tree/main/use-subagent`
+
+支持能力包括：
+
+- 初始化完整子 agent 小队：explorer、planner、worker、verifier、reviewer、fixer
+- 为每个子 agent 分别配置模型 ID，写入 `~/.codex/agents/*.toml`
+- 未知代码位置时，强制先走 explorer 定位
+- 已知位置但方案不明时，强制先走 planner 定方案
+- 方案明确后，由主代理亲自执行最小改动
+- 约束输出为极简路由提示，避免长篇“思考清单”
+- 控制子代理上下文，减少噪音和副作用
+
+初始化命令：
+
+```bash
+python3 "$CLAUDE_SKILL_DIR/scripts/init_agents.py"
+```
 
 ## 开发与维护建议
 
