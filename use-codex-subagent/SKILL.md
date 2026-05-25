@@ -142,9 +142,12 @@ python3 "$CODEX_SKILL_DIR/scripts/init_agents.py" \
 
 `/use-codex-subagent init`
 
-接收到该命令后，主代理需要像配置向导一样，在对话中**询问并收集**用户对所有 6 个子代理（explorer, planner, worker, verifier, reviewer, fixer）的配置要求，主要包含两项：
+接收到该命令后，主代理需要像配置向导一样，在对话中**询问并收集**用户对所有 6 个子代理（explorer, planner, worker, verifier, reviewer, fixer）的配置要求。在询问时，主代理应**主动向用户提供默认推荐值**供其快速一键确认：
+
 1. **模型 ID** (Model ID)
+   - *默认推荐*：针对重度推理角色（`planner`, `reviewer`）推荐使用具备深度思考能力的模型（如 `o3-mini` 或 `o1`）；针对执行与搜索角色（`explorer`, `worker`, `verifier`, `fixer`）推荐使用快速响应的基础大模型（如 `gpt-4o`）。
 2. **思考强度** (Thinking Intensity)
+   - *默认推荐*：`planner` 和 `reviewer` 推荐配置为 `high`；其余角色推荐配置为 `medium` 或 `low`。
 
 主代理在通过对话集齐所有子代理的上述参数后，再统一使用**非交互式参数**（拼装对应的 model 和 thinking_intensity 参数）执行 `init_agents.py` 脚本，一次性生成所有 `.toml` 配置文件。通过这种 Agent 驱动的对话交互方式，既完成了精细的模型区分，又避免了底层终端执行时等待输入造成的阻塞挂起。
 
