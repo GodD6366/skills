@@ -142,7 +142,7 @@ python3 "$CODEX_SKILL_DIR/scripts/init_agents.py" \
 
 `/use-codex-subagent init`
 
-接收到该命令后，主代理需要像配置向导一样，在对话中**询问并收集**用户对所有 6 个子代理（explorer, planner, worker, verifier, reviewer, fixer）的配置要求。在询问时，主代理应**主动向用户提供默认推荐值**供其快速一键确认：
+接收到该命令后，主代理需要像配置向导一样，在对话中**一次性询问并收集**用户对所有 6 个子代理（explorer, planner, worker, verifier, reviewer, fixer）的配置要求，不要分多次询问。在询问时，主代理应**主动向用户提供默认推荐值**供其快速一键确认：
 
 1. **模型 ID** (Model ID)
    - *默认推荐*：
