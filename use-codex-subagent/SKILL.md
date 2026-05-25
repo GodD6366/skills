@@ -122,7 +122,7 @@ description: 当任务复杂需要全微服务化协作时使用：主代理作�
 ### 非交互式初始化 (推荐自动化流程使用)
 
 ```bash
-python3 "$CLAUDE_SKILL_DIR/scripts/init_agents.py" \
+python3 "$CODEX_SKILL_DIR/scripts/init_agents.py" \
   --explorer-model aimami_relay_xxx \
   --planner-model aimami_relay_yyy \
   --worker-model aimami_relay_zzz
@@ -151,7 +151,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/init_agents.py" \
 ### 覆盖已有配置
 
 ```bash
-python3 "$CLAUDE_SKILL_DIR/scripts/init_agents.py" --force
+python3 "$CODEX_SKILL_DIR/scripts/init_agents.py" --force
 ```
 
 ## 上下文传递规则
