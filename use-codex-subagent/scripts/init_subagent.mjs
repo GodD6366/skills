@@ -12,7 +12,7 @@ const ROLES = [
   {
     key: "explorer",
     desc: "定位与取证 — 搜索代码、定位文件、查调用链、收集证据",
-    defaultModel: "gpt-5.3-codex",
+    defaultModel: "gpt-5.4",
     defaultThinking: "medium",
     sandboxMode: "read-only",
     nicknameCandidates: ["Scout", "Trace", "Atlas"],
@@ -102,7 +102,7 @@ Report:
   {
     key: "verifier",
     desc: "验证与测试 — 运行测试、复现问题、检查行为",
-    defaultModel: "gpt-5.3-codex",
+    defaultModel: "gpt-5.4",
     defaultThinking: "medium",
     sandboxMode: "read-only",
     nicknameCandidates: ["Check", "Probe", "Gauge"],
