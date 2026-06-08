@@ -1,4 +1,4 @@
 interface:
   display_name: "Use Subagent"
-  short_description: "先初始化子代理，再精准调度"
-  default_prompt: "Use $use-subagent for this task. Initialize Codex subagents when needed, route through explorer before coding when paths are unclear, use planner when the fix is unclear, then make final code changes with minimal scope. Reply in Chinese."
+  short_description: "先用基础模型初始化子代理，再精准调度"
+  default_prompt: "Use $use-subagent for this task. Initialize Codex subagents when needed; if no custom model providers are configured, use the built-in base models. Route through explorer before coding when paths are unclear, use planner when the fix is unclear, then make final code changes with minimal scope. Reply in Chinese."

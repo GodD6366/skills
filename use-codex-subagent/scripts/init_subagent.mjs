@@ -7,6 +7,10 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 const THINKING_LEVELS = ["low", "medium", "high", "xhigh"];
+const BASE_MODEL_PROVIDERS = [
+  { key: "gpt-5.5", name: "OpenAI Base", model: "gpt-5.5" },
+  { key: "gpt-5.4", name: "OpenAI Base", model: "gpt-5.4" },
+];
 
 const ROLES = [
   {
@@ -179,9 +183,11 @@ Report:
 ];
 
 function parseConfig(configPath) {
+  if (!existsSync(configPath)) return [];
+
   const text = readFileSync(configPath, "utf-8");
-  const providerRe = /^\[model_providers\.(\w+)\]\s*\n([\s\S]*?)(?=^\[|\Z)/gm;
-  const profileRe = /^\[profiles\.(\w+)\]\s*\n([\s\S]*?)(?=^\[|\Z)/gm;
+  const providerRe = /^\[model_providers\.(\w+)\]\s*\n([\s\S]*?)(?=^\[|$(?![\s\S]))/gm;
+  const profileRe = /^\[profiles\.(\w+)\]\s*\n([\s\S]*?)(?=^\[|$(?![\s\S]))/gm;
 
   function extractField(block, field) {
     const m = block.match(new RegExp(`^${field}\\s*=\\s*"([^"]*)"`, "m"));
@@ -207,6 +213,20 @@ function parseConfig(configPath) {
     providers.push({ key, name, model });
   }
   return providers;
+}
+
+function withBaseModelProviders(providers) {
+  const seen = new Set(providers.map((p) => `${p.key}:${p.model}`));
+  const merged = [...providers];
+
+  for (const provider of BASE_MODEL_PROVIDERS) {
+    const dedup = `${provider.key}:${provider.model}`;
+    if (seen.has(dedup)) continue;
+    seen.add(dedup);
+    merged.push(provider);
+  }
+
+  return merged;
 }
 
 function printProviders(providers) {
@@ -423,12 +443,7 @@ if (args.help) {
 }
 
 const configPath = args.config;
-const providers = parseConfig(configPath);
-
-if (!providers.length) {
-  console.error("No model providers found in config.");
-  process.exit(1);
-}
+const providers = withBaseModelProviders(parseConfig(configPath));
 
 if (args.list) {
   printProviders(providers);
