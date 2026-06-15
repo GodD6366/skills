@@ -10,13 +10,14 @@ const THINKING_LEVELS = ["low", "medium", "high", "xhigh"];
 const BASE_MODEL_PROVIDERS = [
   { key: "gpt-5.5", name: "OpenAI Base", model: "gpt-5.5" },
   { key: "gpt-5.4", name: "OpenAI Base", model: "gpt-5.4" },
+  { key: "gpt-5.4-mini", name: "OpenAI Base", model: "gpt-5.4-mini" },
 ];
 
 const ROLES = [
   {
     key: "explorer",
     desc: "定位与取证 — 搜索代码、定位文件、查调用链、收集证据",
-    defaultModel: "gpt-5.4",
+    defaultModel: "gpt-5.4-mini",
     defaultThinking: "medium",
     sandboxMode: "read-only",
     nicknameCandidates: ["Scout", "Trace", "Atlas"],
@@ -207,10 +208,19 @@ function parseConfig(configPath) {
     const block = m[2];
     const name = extractField(block, "name") ?? key;
     const model = profileModels[key] ?? "";
+    const isCustom = !BASE_MODEL_PROVIDERS.some((bp) => bp.key === key);
+
+    let baseUrl = null;
+    let apiKey = null;
+    if (isCustom) {
+      baseUrl = extractField(block, "base_url");
+      apiKey = extractField(block, "api_key") ?? extractField(block, "experimental_bearer_token");
+    }
+
     const dedup = `${key}:${model}`;
     if (seen.has(dedup)) continue;
     seen.add(dedup);
-    providers.push({ key, name, model });
+    providers.push({ key, name, model, isCustom, baseUrl, apiKey });
   }
   return providers;
 }
@@ -223,10 +233,84 @@ function withBaseModelProviders(providers) {
     const dedup = `${provider.key}:${provider.model}`;
     if (seen.has(dedup)) continue;
     seen.add(dedup);
-    merged.push(provider);
+    merged.push({ ...provider, isCustom: false, baseUrl: null, apiKey: null });
   }
 
   return merged;
+}
+
+// --- Custom provider model discovery ---
+
+async function fetchModelsFromProvider(provider) {
+  const base = (provider.baseUrl || "").replace(/\/+$/, "");
+  if (!base) return [];
+
+  const url = base.endsWith("/v1") ? `${base}/models` : `${base}/v1/models`;
+  const headers = { "Content-Type": "application/json" };
+  if (provider.apiKey) {
+    headers["Authorization"] = `Bearer ${provider.apiKey}`;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+  } catch (e) {
+    console.error(`  ⚠ 无法连接 ${provider.name} (${url}): ${e.message}`);
+    return [];
+  }
+
+  if (!resp.ok) {
+    console.error(`  ⚠ ${provider.name} 模型列表请求失败: HTTP ${resp.status}`);
+    return [];
+  }
+
+  let data;
+  try {
+    data = await resp.json();
+  } catch {
+    console.error(`  ⚠ ${provider.name} 返回数据解析失败`);
+    return [];
+  }
+
+  const models = (data.data || []).map((m) => m.id).filter(Boolean).sort();
+  return models;
+}
+
+async function enrichCustomProviders(providers) {
+  const result = [];
+  let hasCustomModels = false;
+
+  for (const p of providers) {
+    if (!p.isCustom || !p.baseUrl) {
+      result.push(p);
+      continue;
+    }
+
+    console.error(`  🔍 正在查询 ${p.name} 支持的模型列表...`);
+    const models = await fetchModelsFromProvider(p);
+
+    if (models.length === 0) {
+      console.error(`  ⚠ ${p.name} 模型列表为空或不可用，回退到配置中的模型 "${p.model || "(无)"}"`);
+      result.push(p);
+      continue;
+    }
+
+    console.error(`  ✅ ${p.name} 提供 ${models.length} 个模型`);
+    hasCustomModels = true;
+    for (const model of models) {
+      result.push({
+        key: p.key,
+        name: p.name,
+        model,
+        isCustom: true,
+        baseUrl: p.baseUrl,
+        apiKey: p.apiKey,
+      });
+    }
+  }
+
+  // 仅在没有自定义模型可用时才补充内置模型
+  return hasCustomModels ? result : withBaseModelProviders(result);
 }
 
 function printProviders(providers) {
@@ -443,7 +527,8 @@ if (args.help) {
 }
 
 const configPath = args.config;
-const providers = withBaseModelProviders(parseConfig(configPath));
+const rawProviders = parseConfig(configPath);
+const providers = await enrichCustomProviders(rawProviders);
 
 if (args.list) {
   printProviders(providers);
