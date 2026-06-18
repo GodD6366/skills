@@ -8,16 +8,16 @@ import { parseArgs } from "node:util";
 
 const THINKING_LEVELS = ["low", "medium", "high", "xhigh"];
 const BASE_MODEL_PROVIDERS = [
-  { key: "gpt-4o", name: "OpenAI Base", model: "gpt-4o" },
-  { key: "gpt-4o-mini", name: "OpenAI Base", model: "gpt-4o-mini" },
-  { key: "o3-mini", name: "OpenAI Base", model: "o3-mini" },
+  { key: "gpt-5.4", name: "OpenAI Base", model: "gpt-5.4" },
+  { key: "gpt-5.4-mini", name: "OpenAI Base", model: "gpt-5.4-mini" },
+  { key: "gpt-5.5", name: "OpenAI Base", model: "gpt-5.5" },
 ];
 
 const ROLES = [
   {
     key: "explorer",
     desc: "定位与取证 — 搜索代码、定位文件、查调用链、收集证据",
-    defaultModel: "gpt-4o-mini",
+    defaultModel: "gpt-5.4-mini",
     defaultThinking: "medium",
     sandboxMode: "read-only",
     nicknameCandidates: ["Scout", "Trace", "Atlas"],
@@ -44,7 +44,7 @@ If the remaining question is architectural, ambiguous, or risk-heavy, recommend 
   {
     key: "planner",
     desc: "方案与规划 — 根因分析、最小方案设计、风险评估",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.4",
     defaultThinking: "xhigh",
     sandboxMode: "read-only",
     nicknameCandidates: ["Helm", "Northstar", "Sage"],
@@ -77,7 +77,7 @@ If the path is clear, hand off to the parent agent for implementation.`,
   {
     key: "worker",
     desc: "实现与执行 — 按方案实施代码修改，最小改动",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.4",
     defaultThinking: "high",
     sandboxMode: "workspace-write",
     nicknameCandidates: ["Patch", "Forge", "Bolt"],
@@ -107,7 +107,7 @@ Report:
   {
     key: "verifier",
     desc: "验证与测试 — 运行测试、复现问题、检查行为",
-    defaultModel: "gpt-4o-mini",
+    defaultModel: "gpt-5.4-mini",
     defaultThinking: "medium",
     sandboxMode: "read-only",
     nicknameCandidates: ["Check", "Probe", "Gauge"],
@@ -132,7 +132,7 @@ Return PASS, FAIL, or INCONCLUSIVE with concise evidence.`,
   {
     key: "reviewer",
     desc: "代码审查 — 审查实现是否符合需求、质量、风险",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.4",
     defaultThinking: "xhigh",
     sandboxMode: "read-only",
     nicknameCandidates: ["Lens", "Guard", "Critic"],
@@ -159,7 +159,7 @@ Return:
   {
     key: "fixer",
     desc: "定点修复 — 针对失败测试或 review 做局部补救",
-    defaultModel: "gpt-4o",
+    defaultModel: "gpt-5.4",
     defaultThinking: "high",
     sandboxMode: "workspace-write",
     nicknameCandidates: ["Mend", "Patch", "Triage"],
