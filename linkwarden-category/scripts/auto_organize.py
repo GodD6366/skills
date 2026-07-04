@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Linkwarden 书签自动分类脚本
-每天凌晨3点自动将未分类书签进行分类
+Linkwarden 书签自动分类脚本（LLM 驱动版）
+脚本只提供数据查询和操作接口，分类决策由 LLM 完成。
 """
 
-import requests
 import json
-import re
 import os
-from datetime import datetime
+import sys
+import argparse
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
-# 配置 - 从环境变量或 .env 文件读取
+# ── 环境变量加载 ──────────────────────────────────────────────
+
 def load_env():
-    """加载 .env 文件（如果存在）"""
     env_path = Path(__file__).parent.parent / '.env'
     if env_path.exists():
         with open(env_path, 'r') as f:
@@ -32,10 +34,7 @@ TOKEN = os.environ.get('LINKWARDEN_API_TOKEN', '')
 BASE_URL = os.environ.get('LINKWARDEN_URL', '').rstrip('/')
 
 if not TOKEN or not BASE_URL:
-    print("错误：请设置环境变量 LINKWARDEN_URL 和 LINKWARDEN_API_TOKEN")
-    print("或在当前 skill 目录下创建 .env 文件：")
-    print('LINKWARDEN_URL=https://your-instance.example.com')
-    print('LINKWARDEN_API_TOKEN=your_token_here')
+    print("错误：请设置环境变量 LINKWARDEN_URL 和 LINKWARDEN_API_TOKEN", file=sys.stderr)
     exit(1)
 
 HEADERS = {
@@ -43,203 +42,230 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# 收藏夹映射 (关键词 -> 收藏夹ID)
-# 优先级：关键词越具体越靠前
-COLLECTION_KEYWORDS = {
-    6: ['ai', '人工智能', 'machine learning', 'ml', 'deep learning', 'gpt', 'llm', 'openai', 'anthropic', 'claude', 'chatgpt', '大模型', '神经网络', 'transformer', '量化', 'quant', 'quantaxis', 'backtrader'],
-    4: ['编程', 'programming', 'code', 'python', 'javascript', 'typescript', 'rust', 'go', 'java', 'react', 'vue', 'node', 'css', 'html', '前端', '后端', 'api', '框架', 'sdk', 'git', 'github', '开发', 'webpack', 'vite', 'npm', '教程', 'guide', 'docs', 'documentation', '源码', '源码解析'],
-    9: ['selfhost', 'self-host', '自托管', 'docker', 'kubernetes', 'k8s', '容器', 'container', '部署', 'deploy', 'server', '服务器', 'linux', 'ubuntu', 'debian', 'centos', 'pve', 'proxmox', 'esxi', 'nas', 'synology', 'unraid', 'homelab', 'nas教程'],
-    3: ['折腾', 'homelab', 'diy', '改装', '黑群晖', '虚拟机', 'lxc', '刷机', 'openwrt', '树莓派', 'raspberry', '软路由', '路由器'],
-    7: ['软件', 'app', 'application', '工具', 'tool', '下载', 'download', 'apk', 'mac', 'windows', 'ios', 'android', 'chrome', '扩展', '插件', 'extension', 'vps', '云服务', 'cloud', '浏览器', 'webapp', '客户端'],
-    1: ['网络', 'network', 'dns', 'proxy', 'vpn', 'tcp', 'udp', 'http', 'cdn', '路由', 'router', 'frp', 'clash', 'wireguard', 'zerotier', 'nginx', 'ssl', '证书', 'ip', '内网穿透', '代理', '抓包'],
-    2: ['博客', 'blog', '文章', '随笔', '思考', '观点', '评论', '豆瓣', 'douban', '知乎', 'zhihu', '微博', 'weibo', 'newsletter', '笔记', 'notes'],
-}
 
-# 标签关键词映射
-TAG_KEYWORDS = {
-    'Network': ['网络', 'network', 'dns', 'proxy', 'vpn', 'tcp', 'udp', 'http', 'cdn'],
-    'AI': ['ai', '人工智能', 'machine learning', 'ml', 'gpt', 'llm', '大模型'],
-    'Android': ['android', 'apk', '安卓'],
-    'Docker': ['docker', 'container', '容器', 'kubernetes', 'k8s'],
-    'Linux': ['linux', 'ubuntu', 'debian', 'centos', 'shell', 'bash'],
-    '开源': ['开源', 'open source', 'github', 'opensource', 'oss'],
-    '安全': ['安全', 'security', '加密', 'encrypt', 'password', '密码', 'vpn', 'firewall'],
-    '前端': ['前端', 'frontend', 'javascript', 'typescript', 'react', 'vue', 'css', 'html'],
-    '后端': ['后端', 'backend', 'api', 'server', 'database', '数据库'],
-    'Python': ['python', 'pip', 'django', 'flask', 'fastapi'],
-    '教程': ['教程', 'tutorial', '指南', 'guide', '入门', '学习', 'learn'],
-    '工具': ['工具', 'tool', 'utility', '效率'],
-}
+def api_request(method, path, data=None, params=None):
+    url = f"{BASE_URL}{path}"
+    if params:
+        query = urllib.parse.urlencode(params, doseq=True)
+        url = f"{url}?{query}"
 
-# 未分类收藏夹ID
-UNORGANIZED_ID = 1
-# 其他收藏夹ID（无法匹配时使用）
-OTHER_COLLECTION_NAME = "其他"
+    body = None
+    if data is not None:
+        body = json.dumps(data).encode('utf-8')
 
-
-def get_all_collections():
-    """获取所有收藏夹"""
-    r = requests.get(f"{BASE_URL}/api/v1/collections", headers=HEADERS)
-    if r.status_code == 200:
-        return r.json().get('response', [])
-    return []
-
-
-def get_all_tags():
-    """获取所有标签"""
-    r = requests.get(f"{BASE_URL}/api/v1/tags", headers=HEADERS)
-    if r.status_code == 200:
-        return r.json().get('response', [])
-    return []
-
-
-def get_unorganized_links(limit=50):
-    """获取未分类书签"""
-    params = {'collectionId': UNORGANIZED_ID, 'take': limit}
-    r = requests.get(f"{BASE_URL}/api/v1/links", headers=HEADERS, params=params)
-    if r.status_code == 200:
-        return r.json().get('response', [])
-    return []
-
-
-def create_collection(name, description=''):
-    """创建收藏夹"""
-    data = {'name': name, 'description': description, 'color': '#0ea5e9'}
-    r = requests.post(f"{BASE_URL}/api/v1/collections", headers=HEADERS, json=data)
-    if r.status_code == 200:
-        return r.json().get('response', {}).get('id')
+    request = urllib.request.Request(url, data=body, headers=HEADERS, method=method)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            raw = response.read().decode('utf-8')
+            if not raw:
+                return None
+            payload = json.loads(raw)
+            return payload.get('data', payload.get('response', payload))
+    except urllib.error.HTTPError as error:
+        text = error.read().decode('utf-8', errors='replace') if error.fp else str(error)
+        print(f"API 错误 [{error.code}]: {text[:200]}", file=sys.stderr)
+    except Exception as error:
+        print(f"API 错误: {error}", file=sys.stderr)
     return None
 
 
-def analyze_content(link):
-    """分析书签内容，返回匹配的收藏夹ID和标签列表"""
-    # 合并可分析的文本
-    text_parts = [
-        link.get('name', ''),
-        link.get('description', ''),
-        link.get('url', ''),
-        link.get('textContent', '') or ''
-    ]
-    text = ' '.join(text_parts).lower()
 
-    # 匹配收藏夹
-    best_collection = None
-    best_score = 0
+# ── 默认初始化结构 ────────────────────────────────────────────
 
-    for col_id, keywords in COLLECTION_KEYWORDS.items():
-        score = sum(1 for kw in keywords if kw.lower() in text)
-        if score > best_score:
-            best_score = score
-            best_collection = col_id
+DEFAULT_COLLECTIONS = [
+    ("AI", "人工智能、大模型、机器学习"),
+    ("编程", "编程语言、开发框架、代码"),
+    ("自托管", "Docker、NAS、Homelab、服务器"),
+    ("折腾", "硬件改装、刷机、DIY"),
+    ("工具", "软件、App、效率工具"),
+    ("网络", "网络技术、VPN、代理、DNS"),
+    ("阅读", "博客、文章、随笔、笔记"),
+    ("其他", "无法归类的书签"),
+]
 
-    # 匹配标签（最多3个）
-    matched_tags = []
-    for tag_name, keywords in TAG_KEYWORDS.items():
-        if any(kw.lower() in text for kw in keywords):
-            matched_tags.append(tag_name)
-            if len(matched_tags) >= 3:
-                break
+DEFAULT_TAGS = [
+    "AI", "Android", "Docker", "Linux", "Python",
+    "Network", "安全", "开源", "前端", "后端", "教程", "工具",
+]
 
-    return best_collection, matched_tags
+UNORGANIZED_ID = 1
+
+# ── API 工具函数 ──────────────────────────────────────────────
+
+def api_get(path, params=None):
+    return api_request('GET', path, params=params)
+
+def api_post(path, data):
+    return api_request('POST', path, data=data)
+
+def api_put(path, data):
+    return api_request('PUT', path, data=data)
+
+# ── 子命令实现 ────────────────────────────────────────────────
+
+def cmd_init(args):
+    """初始化默认收藏夹和标签结构"""
+    collections = api_get("/api/v1/collections") or []
+    existing_cols = {c['name']: c['id'] for c in collections}
+
+    created_cols = []
+    for name, desc in DEFAULT_COLLECTIONS:
+        if name not in existing_cols:
+            result = api_post("/api/v1/collections", {
+                'name': name, 'description': desc, 'color': '#0ea5e9'
+            })
+            if result and 'id' in result:
+                created_cols.append(f"  + {name} (id={result['id']})")
+
+    existing_tags_raw = api_get("/api/v1/tags") or []
+    existing_tags = {t['name'].lower() for t in existing_tags_raw}
+
+    created_tags = []
+    for tag in DEFAULT_TAGS:
+        if tag.lower() not in existing_tags:
+            result = api_post("/api/v1/tags", [{'name': tag}])
+            if result:
+                created_tags.append(f"  + {tag}")
+
+    print("初始化完成")
+    if created_cols:
+        print(f"创建收藏夹 ({len(created_cols)}):")
+        print('\n'.join(created_cols))
+    else:
+        print("收藏夹：无需创建")
+    if created_tags:
+        print(f"创建标签 ({len(created_tags)}):")
+        print('\n'.join(created_tags))
+    else:
+        print("标签：无需创建")
+
+    # 输出完整结构供 LLM 参考
+    all_cols = api_get("/api/v1/collections") or []
+    print("\n当前所有收藏夹:")
+    for c in all_cols:
+        print(f"  id={c['id']}  {c['name']}")
+
+    all_tags = api_get("/api/v1/tags") or []
+    print("\n当前所有标签:")
+    for t in all_tags:
+        print(f"  id={t['id']}  {t['name']}")
+
+    print("\nRESULT: INIT_DONE")
 
 
-def update_link(link_id, collection_id, tags):
+def cmd_list(args):
+    """列出未分类书签（JSON 输出，供 LLM 消费）"""
+    limit = args.limit or 50
+    links = api_get("/api/v1/links", {'collectionId': UNORGANIZED_ID, 'take': limit}) or []
+
+    if not links:
+        print(json.dumps({"count": 0, "links": []}, ensure_ascii=False))
+        return
+
+    result = []
+    for link in links:
+        result.append({
+            "id": link['id'],
+            "name": link.get('name', ''),
+            "url": link.get('url', ''),
+            "description": link.get('description', ''),
+            "textContent": (link.get('textContent') or '')[:500],
+            "tags": [t.get('name', '') for t in link.get('tags', [])],
+        })
+
+    print(json.dumps({"count": len(result), "links": result}, ensure_ascii=False, indent=2))
+
+
+def cmd_list_collections(args):
+    """列出所有收藏夹"""
+    collections = api_get("/api/v1/collections") or []
+    for c in collections:
+        print(json.dumps({"id": c['id'], "name": c['name']}, ensure_ascii=False))
+
+
+def cmd_list_tags(args):
+    """列出所有标签"""
+    result = api_get("/api/v1/tags", {'take': 200})
+    tags = result.get('tags', result) if isinstance(result, dict) else (result or [])
+    for t in tags:
+        print(json.dumps({"id": t['id'], "name": t['name']}, ensure_ascii=False))
+
+
+def cmd_update(args):
     """更新书签的收藏夹和标签"""
-    # 先获取现有书签信息
-    r = requests.get(f"{BASE_URL}/api/v1/links/{link_id}", headers=HEADERS)
-    if r.status_code != 200:
-        return False, "获取书签失败"
-
-    link = r.json().get('response', {})
+    link = api_get(f"/api/v1/links/{args.link_id}")
+    if not link:
+        print(f"书签 {args.link_id} 不存在", file=sys.stderr)
+        return
 
     data = {
-        "id": link_id,
+        "id": args.link_id,
         "name": link.get("name", ""),
         "url": link.get("url", ""),
         "description": link.get("description", ""),
-        "collection": {
-            "id": collection_id,
-            "ownerId": 1
-        },
-        "tags": [{"name": tag} for tag in tags]
+        "collection": {"id": args.collection_id, "ownerId": 1},
     }
 
-    r = requests.put(f"{BASE_URL}/api/v1/links/{link_id}", headers=HEADERS, json=data)
-    if r.status_code == 200:
-        return True, "成功"
-    return False, r.text[:100]
+    if args.tags is not None:
+        tag_names = [t.strip() for t in args.tags.split(',') if t.strip()]
+        data["tags"] = [{"name": t} for t in tag_names]
+    else:
+        data["tags"] = [{"name": t.get('name', '')} for t in link.get('tags', [])]
 
+    result = api_put(f"/api/v1/links/{args.link_id}", data)
+    if result is not None:
+        print(json.dumps({"ok": True, "link_id": args.link_id}, ensure_ascii=False))
+    else:
+        print(json.dumps({"ok": False, "link_id": args.link_id, "error": "update failed"}, ensure_ascii=False))
+
+
+def cmd_summary(args):
+    """输出分类状态摘要"""
+    collections = api_get("/api/v1/collections") or []
+    unorganized = api_get("/api/v1/links", {'collectionId': UNORGANIZED_ID, 'take': 100}) or []
+
+    print(f"未分类书签: {len(unorganized)} 个")
+    print(f"收藏夹数量: {len(collections)} 个")
+    for c in collections:
+        links = api_get("/api/v1/links", {'collectionId': c['id'], 'take': 1}) or []
+        # 用列表接口获取总数不太精确，只显示是否有内容
+        marker = "✓" if links else "·"
+        print(f"  {marker} {c['name']} (id={c['id']})")
+
+    print("\nRESULT: SUMMARY")
+
+
+# ── 主入口 ────────────────────────────────────────────────────
 
 def main():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 开始自动分类书签...")
+    parser = argparse.ArgumentParser(description='Linkwarden 书签分类工具（LLM 驱动）')
+    sub = parser.add_subparsers(dest='command', required=True)
 
-    # 获取现有收藏夹
-    collections = get_all_collections()
-    collection_map = {c['id']: c['name'] for c in collections}
+    sub.add_parser('init', help='初始化默认收藏夹和标签')
 
-    # 检查是否有"其他"收藏夹，没有则创建
-    other_id = None
-    for c in collections:
-        if c['name'] == OTHER_COLLECTION_NAME:
-            other_id = c['id']
-            break
+    p_list = sub.add_parser('list', help='列出未分类书签（JSON）')
+    p_list.add_argument('--limit', type=int, default=50)
 
-    if not other_id:
-        print(f"创建 '{OTHER_COLLECTION_NAME}' 收藏夹...")
-        other_id = create_collection(OTHER_COLLECTION_NAME, "无法自动分类的书签")
-        if not other_id:
-            print("创建收藏夹失败，使用未分类收藏夹")
-            other_id = UNORGANIZED_ID
+    sub.add_parser('list-collections', help='列出所有收藏夹')
+    sub.add_parser('list-tags', help='列出所有标签')
+    sub.add_parser('summary', help='分类状态摘要')
 
-    # 获取现有标签
-    existing_tags = get_all_tags()
-    existing_tag_names = {t['name'].lower(): t['name'] for t in existing_tags}
+    p_update = sub.add_parser('update', help='更新书签分类')
+    p_update.add_argument('link_id', type=int)
+    p_update.add_argument('--collection-id', type=int, required=True)
+    p_update.add_argument('--tags', type=str, default=None, help='逗号分隔的标签列表')
 
-    # 获取未分类书签
-    links = get_unorganized_links()
-    print(f"找到 {len(links)} 个未分类书签")
+    args = parser.parse_args()
 
-    if not links:
-        print("没有需要分类的书签")
-        print("RESULT: NO_CHANGES")
-        return
-
-    success_count = 0
-    for link in links:
-        link_id = link['id']
-        link_name = link.get('name', '无标题')[:50]
-
-        # 分析内容
-        target_collection, suggested_tags = analyze_content(link)
-
-        # 如果没有匹配到收藏夹，使用"其他"
-        if not target_collection:
-            target_collection = other_id
-
-        # 标签名称标准化（复用现有标签）
-        final_tags = []
-        for tag in suggested_tags:
-            tag_lower = tag.lower()
-            if tag_lower in existing_tag_names:
-                final_tags.append(existing_tag_names[tag_lower])
-            else:
-                final_tags.append(tag)
-
-        # 更新书签
-        ok, msg = update_link(link_id, target_collection, final_tags)
-        if ok:
-            success_count += 1
-            col_name = collection_map.get(target_collection, str(target_collection))
-            tags_str = ', '.join(final_tags) if final_tags else '无'
-            print(f"✅ [{link_name}] -> {col_name} | 标签: {tags_str}")
-        else:
-            print(f"❌ [{link_name}]: {msg}")
-
-    print(f"\n完成: {success_count}/{len(links)} 个书签已分类")
-    if success_count > 0:
-        print(f"RESULT: CHANGED {success_count}")
-    else:
-        print("RESULT: NO_CHANGES")
+    cmd_map = {
+        'init': cmd_init,
+        'list': cmd_list,
+        'list-collections': cmd_list_collections,
+        'list-tags': cmd_list_tags,
+        'update': cmd_update,
+        'summary': cmd_summary,
+    }
+    cmd_map[args.command](args)
 
 
 if __name__ == '__main__':

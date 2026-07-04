@@ -93,7 +93,7 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   - MinIO / 私有部署：优先使用 `--path-style`
 - 如果 endpoint 使用内网主机名、非通配 TLS、IP 地址或自定义端口，优先使用 `--path-style`。
 - 如果用户提供的是单个对象 key，使用 `--key`。
-- 如果用户希望把多个文件上传到同一个“目录式”位置，使用 `--prefix`。
+- 如果用户希望把多个文件上传到同一个"目录式"位置，使用 `--prefix`。
 
 ## 凭证
 
@@ -151,6 +151,28 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   --acl public-read
 ```
 
+### 上传到 OtterIO/MinIO 并配置匿名访问
+
+OtterIO 和 MinIO **不支持** `--acl` 参数。需要使用 `mc anonymous` 命令配置匿名访问：
+
+```bash
+# 1. 上传文件（不带 --acl 参数）
+python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
+  --file ./dist/index.html \
+  --bucket jarvis \
+  --key public/index.html \
+  --endpoint https://s3.godd.site:6443 \
+  --path-style
+
+# 2. 配置 mc 别名（首次使用时）
+/tmp/mc alias set otterio https://s3.godd.site:6443 godd "dcc963.963." --api S3v4
+
+# 3. 设置 bucket 匿名访问权限为 download（一次性配置）
+/tmp/mc anonymous set download otterio/jarvis
+```
+
+**注意：** bucket 的匿名访问权限只需配置一次，后续上传的文件会自动公开可访问。
+
 ### 添加 metadata
 
 ```bash
@@ -169,6 +191,8 @@ python3 "$CLAUDE_SKILL_DIR/scripts/upload_s3.py" \
   - 如果是 MinIO，尝试 `--path-style`
 - `AccessDenied`
   - 检查 bucket policy、凭证权限，以及请求的 ACL 是否被允许
+  - **OtterIO/MinIO 不支持 `--acl` 参数**，需要使用 `mc anonymous` 配置匿名访问
+  - 配置命令：`/tmp/mc anonymous set download otterio/<bucket>`
 - TLS 或主机名不匹配
   - 使用正确的 endpoint，并优先尝试 `--path-style`
 - 对象上传到了错误位置

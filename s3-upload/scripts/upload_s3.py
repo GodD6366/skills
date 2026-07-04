@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Upload local files to AWS S3 or any S3-compatible endpoint such as MinIO.
+Upload local files to AWS S3 or any S3-compatible endpoint.
 
 This script intentionally uses only the Python standard library so the skill
 works without boto3 or awscli.

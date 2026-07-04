@@ -47,10 +47,10 @@
 示例：
 
 ```dotenv
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_DEFAULT_REGION=us-east-1
-S3_ENDPOINT_URL=https://minio.example.internal:9000
+S3_ENDPOINT_URL=https://s3.example.internal:9000
 S3_FORCE_PATH_STYLE=true
 ```
 
@@ -101,28 +101,6 @@ python3 scripts/upload_s3.py \
 
 # 多个文件，自动追加各自 basename
 --file ./a.txt --file ./b.txt --prefix exports/2026-05-21/
-```
-
-## MinIO 说明
-
-对于私有 MinIO 部署：
-
-- 设置 `--endpoint`，例如 `https://minio.example.internal`
-- 通常优先使用 `--path-style`
-- region 要与服务端配置保持一致；`us-east-1` 是常见默认值
-
-示例：
-
-```bash
-export AWS_ACCESS_KEY_ID="minioadmin"
-export AWS_SECRET_ACCESS_KEY="minioadmin"
-python3 scripts/upload_s3.py \
-  --file ./backup.sql.gz \
-  --bucket db-backups \
-  --key nightly/backup.sql.gz \
-  --endpoint https://minio.example.internal:9000 \
-  --region us-east-1 \
-  --path-style
 ```
 
 ## 输出
