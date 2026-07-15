@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "spriteVersionNumber": 2,
+  "run_dir": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet",
+  "spritesheet": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/final/spritesheet-extended.webp",
+  "validation": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/final/validation-extended.json",
+  "chroma_despill": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/chroma-despill-extended.json",
+  "contact_sheet": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/contact-sheet-extended.png",
+  "direction_sheet": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/look-directions.png",
+  "direction_semantics": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/direction-semantics.json",
+  "blind_direction_validation": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/direction-blind-validation.json",
+  "continuity": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/look-continuity.json",
+  "review": "/Users/godd/Documents/Codex/2026-07-15/hatch-pet/work/xiao-erji-pet/qa/review.json",
+  "package": "/Users/godd/.codex/pets/little-headphones"
+}
