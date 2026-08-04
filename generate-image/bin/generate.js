@@ -247,6 +247,11 @@ async function fetchWithTimeout(url, init, timeoutMs) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`image generation request timed out after ${timeoutMs / 1000}s`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -382,7 +387,7 @@ async function main() {
   const fileInput = cliInput.input ? await loadInput(cliInput.input) : {};
   const payload = normalizePayload(cliInput, fileInput);
   const localPath = await generateImage(payload);
-  process.stdout.write(localPath);
+  process.stdout.write(`${localPath}\n`);
 }
 
 main().catch((error) => {

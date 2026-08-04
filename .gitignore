@@ -1,3 +1,6 @@
 .antigravitycli
 **/.env
 **/.DS_Store
+pet-qiqi/.idle-book-repair/*
+pet-qiqi/.running-homework-repair/*
+generate-image/.tmp/*
