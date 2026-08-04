@@ -52,8 +52,8 @@ python3 scripts/auto_organize.py init
 1. 运行 `python3 scripts/auto_organize.py list` 获取未分类书签（JSON 输出）
 2. 运行 `python3 scripts/auto_organize.py list-collections` 获取所有收藏夹
 3. 运行 `python3 scripts/auto_organize.py list-tags` 获取所有标签
-4. **LLM 根据书签内容，决定每个书签应归属的收藏夹和标签**
-5. 运行 `python3 scripts/auto_organize.py update <link_id> --collection-id <id> --tags "tag1,tag2"` 更新每个书签
+4. **LLM 根据书签内容，提炼可检索的中文标题（含核心对象/场景）与一句话摘要，并决定每个书签应归属的收藏夹和标签**
+5. 运行 `python3 scripts/auto_organize.py update <id> --collection-id <id> --tags "tag1,tag2" --name "提炼标题" --description "一句话中文摘要"` 更新每个书签
 
 ### 状态查询
 
@@ -71,13 +71,14 @@ python3 scripts/auto_organize.py summary
 | `list [--limit N]` | 列出未分类书签（JSON） |
 | `list-collections` | 列出所有收藏夹 |
 | `list-tags` | 列出所有标签 |
-| `update <id> --collection-id <id> [--tags "t1,t2"]` | 更新书签分类 |
+| `update <id> --collection-id <id> [--tags "t1,t2"] [--name "标题"] [--description "摘要"]` | 更新书签标题、摘要和分类 |
 | `summary` | 分类状态摘要 |
 
 ## 注意事项
 
 - 脚本不包含关键词匹配逻辑，所有分类由 LLM 决定
-- 收藏夹和标签由 LLM 按需创建，脚本不预设分类规则
+- 日常任务只可使用已有收藏夹与标签；不得自动创建新标签。无法准确覆盖时，在通知中提出建议，由 GodD 决定
+- 标题用中文提炼核心对象、用途或问题；摘要为一句可按关键词检索的中文说明，避免泛泛复述原标题
 - 凭证默认不明文记录
 - 不要通过浏览器操作 Linkwarden Web 界面，使用此脚本的 API 接口
 

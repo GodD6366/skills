@@ -192,7 +192,7 @@ def cmd_list_tags(args):
 
 
 def cmd_update(args):
-    """更新书签的收藏夹和标签"""
+    """更新书签的标题、摘要、收藏夹和标签"""
     link = api_get(f"/api/v1/links/{args.link_id}")
     if not link:
         print(f"书签 {args.link_id} 不存在", file=sys.stderr)
@@ -200,10 +200,14 @@ def cmd_update(args):
 
     data = {
         "id": args.link_id,
-        "name": link.get("name", ""),
+        "name": args.name if args.name is not None else link.get("name", ""),
         "url": link.get("url", ""),
-        "description": link.get("description", ""),
-        "collection": {"id": args.collection_id, "ownerId": 1},
+        "description": args.description if args.description is not None else link.get("description", ""),
+        "collection": (
+            {"id": args.collection_id, "ownerId": 1}
+            if args.collection_id is not None
+            else link.get("collection")
+        ),
     }
 
     if args.tags is not None:
@@ -250,10 +254,12 @@ def main():
     sub.add_parser('list-tags', help='列出所有标签')
     sub.add_parser('summary', help='分类状态摘要')
 
-    p_update = sub.add_parser('update', help='更新书签分类')
+    p_update = sub.add_parser('update', help='更新书签标题、摘要和分类')
     p_update.add_argument('link_id', type=int)
-    p_update.add_argument('--collection-id', type=int, required=True)
+    p_update.add_argument('--collection-id', type=int, required=False, default=None, help='收藏夹 ID；省略则保持原收藏夹')
     p_update.add_argument('--tags', type=str, default=None, help='逗号分隔的标签列表')
+    p_update.add_argument('--name', type=str, default=None, help='提炼后的标题')
+    p_update.add_argument('--description', type=str, default=None, help='一句话中文摘要')
 
     args = parser.parse_args()
 
